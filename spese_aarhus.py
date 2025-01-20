@@ -27,7 +27,7 @@ st.markdown(
 )
 
 # Titolo dell'app
-st.title('Gestione delle spese a Aarhus')
+st.title('Spese Aarhus 🇩🇰 | Marcos Trainsheep')
 
 # Menu per scegliere tra visualizzare le spese o aggiungerne di nuove
 scelta = st.radio("Cosa vuoi fare?", ['Visualizza Spese', 'Aggiungi una Spesa'])
