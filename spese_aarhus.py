@@ -1,5 +1,18 @@
 import streamlit as st
 import pandas as pd
+import sqlite3
+
+# Connetti al database SQLite (o creane uno se non esiste)
+conn = sqlite3.connect('spese_aarhus.db')
+c = conn.cursor()
+
+# Crea una tabella nel database se non esiste già
+c.execute('''CREATE TABLE IF NOT EXISTS spese (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                data TEXT,
+                categoria TEXT,
+                descrizione TEXT,
+                importo REAL)''')
 
 # Impostazione sfondo bianco
 st.markdown(
@@ -16,26 +29,24 @@ st.markdown(
 # Titolo dell'app
 st.title('Gestione delle spese a Aarhus')
 
-# Inizializza un DataFrame vuoto per memorizzare le spese se non esiste già
-if 'expenses' not in st.session_state:
-    st.session_state['expenses'] = pd.DataFrame(columns=['Data', 'Categoria', 'Descrizione', 'Importo'])
-
 # Menu per scegliere tra visualizzare le spese o aggiungerne di nuove
 scelta = st.radio("Cosa vuoi fare?", ['Visualizza Spese', 'Aggiungi una Spesa'])
 
 if scelta == 'Visualizza Spese':
-    # Visualizza la tabella delle spese
-    st.write("### Spese registrate:")
+    # Recupera le spese dal database
+    query = "SELECT * FROM spese"
+    spese_db = pd.read_sql(query, conn)
 
     # Mostra la data nel formato europeo (gg/mm/aaaa)
-    st.session_state['expenses']['Data'] = pd.to_datetime(st.session_state['expenses']['Data'], errors='coerce').dt.strftime('%d/%m/%Y')
+    spese_db['data'] = pd.to_datetime(spese_db['data'], errors='coerce').dt.strftime('%d/%m/%Y')
 
-    st.write(st.session_state['expenses'])
+    st.write("### Spese registrate:")
+    st.write(spese_db)
 
     # Bottone per scaricare il file CSV delle spese
     st.download_button(
         label="Scarica le tue spese come CSV",
-        data=st.session_state['expenses'].to_csv(index=False),
+        data=spese_db.to_csv(index=False),
         file_name='spese_aarhus.csv',
         mime='text/csv'
     )
@@ -49,6 +60,11 @@ elif scelta == 'Aggiungi una Spesa':
 
     # Bottone per aggiungere una nuova spesa
     if st.button('Aggiungi spesa'):
-        new_expense = pd.DataFrame([[data, categoria, descrizione, importo]], columns=['Data', 'Categoria', 'Descrizione', 'Importo'])
-        st.session_state['expenses'] = pd.concat([st.session_state['expenses'], new_expense], ignore_index=True)
+        # Inserisci la spesa nel database
+        c.execute("INSERT INTO spese (data, categoria, descrizione, importo) VALUES (?, ?, ?, ?)",
+                  (data.strftime('%d/%m/%Y'), categoria, descrizione, importo))
+        conn.commit()
         st.success('Spesa aggiunta con successo!')
+
+# Chiudi la connessione al database quando l'app finisce
+conn.close()
